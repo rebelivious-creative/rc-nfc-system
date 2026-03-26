@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RC | Master Admin Panel</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0; padding: 20px; min-height: 100vh; overflow-x: hidden;
+            background: radial-gradient(circle at 50% 50%, #0c1b33, #070f1c, #03070d);
+            background-size: 200% 200%; animation: gradientShift 8s ease infinite;
+            color: white; font-family: 'Rajdhani', sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        body::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            opacity: 0.15; mix-blend-mode: overlay; pointer-events: none; z-index: 0;
+        }
+
+        h1 { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; text-shadow: 0 0 10px rgba(76,161,175,0.5); z-index: 1; text-align: center;}
+        
+        .dashboard, #login-screen { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%; max-width: 1000px; z-index: 1; }
+        
+        #login-screen { max-width: 400px; margin-top: 100px; flex-direction: column; }
+
+        .admin-panel {
+            background: rgba(10, 20, 40, 0.6); backdrop-filter: blur(10px);
+            border: 1px solid rgba(76, 161, 175, 0.3); border-top: 4px solid #38a3a5;
+            padding: 25px; border-radius: 8px; flex: 1; min-width: 300px; box-sizing: border-box;
+        }
+
+        .admin-panel h2 { font-family: 'Orbitron', sans-serif; font-size: 18px; margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;}
+
+        input, textarea {
+            width: 100%; padding: 12px; margin: 8px 0 15px 0;
+            background: rgba(0, 0, 0, 0.5); border: 1px solid #38a3a5;
+            color: white; border-radius: 4px; box-sizing: border-box; font-family: 'Rajdhani', sans-serif; font-size: 16px;
+        }
+        
+        textarea { resize: vertical; min-height: 80px; }
+        label { font-size: 14px; color: #88c0d0; text-transform: uppercase; font-weight: bold; }
+
+        button {
+            width: 100%; padding: 15px; background: #0a1128; color: white; border: 1px solid #38a3a5; border-left: 5px solid #38a3a5;
+            font-family: 'Orbitron', sans-serif; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.3s;
+        }
+
+        button:hover { background: #38a3a5; color: #0a1128; }
+        
+        .danger-btn { border-left: 5px solid red; margin-top: 10px; }
+        .danger-btn:hover { background: red; color: white; }
+
+        .status { color: #38a3a5; text-align: center; margin-top: 10px; font-weight: bold; min-height: 20px;}
+
+        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="admin-panel">
+            <h2 style="text-align: center;">SYSTEM LOGIN</h2>
+            <label>Admin Email</label>
+            <input type="email" id="admin-email" placeholder="Enter email">
+            
+            <label>Password</label>
+            <input type="password" id="admin-password" placeholder="Enter password">
+            
+            <button onclick="login()">AUTHORIZE ACCESS</button>
+            <p id="login-status" class="status"></p>
+        </div>
+    </div>
+
+    <div id="main-dashboard" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center;">
+        <h1>RC | CLIENT CONTROL</h1>
+        
+        <button onclick="logout()" class="danger-btn" style="max-width: 200px; margin-bottom: 20px;">LOGOUT SYSTEM</button>
+
+        <div class="dashboard">
+            <div class="admin-panel">
+                <h2>1. PROFILE DATA</h2>
+                <label>Full Name</label>
+                <input type="text" id="p-name" placeholder="e.g., Cheryl Choe">
+                
+                <label>Job Title / Role</label>
+                <input type="text" id="p-role" placeholder="e.g., Founder">
+                
+                <label>Bio (Leave blank to hide)</label>
+                <textarea id="p-bio" placeholder="e.g., Creative Director based in SG & MY"></textarea>
+                
+                <label>Email Address</label>
+                <input type="text" id="p-email" placeholder="e.g., cloe@crossfield.com">
+                
+                <label>Phone Number</label>
+                <input type="text" id="p-phone" placeholder="e.g., +60147205966">
+                
+                <button onclick="saveProfile()">UPDATE PROFILE</button>
+                <p id="status-profile" class="status"></p>
+            </div>
+
+            <div class="admin-panel">
+                <h2>2. SOCIAL ICONS</h2>
+                <p style="font-size: 13px; color: gray; margin-top:-10px;">Paste full URLs. Leave blank to hide the icon.</p>
+                
+                <label>Instagram URL</label>
+                <input type="text" id="s-insta" placeholder="https://instagram.com/...">
+                
+                <label>LinkedIn URL</label>
+                <input type="text" id="s-linkedin" placeholder="https://linkedin.com/in/...">
+                
+                <label>WhatsApp URL</label>
+                <input type="text" id="s-wa" placeholder="https://wa.me/60147205966">
+                
+                <button onclick="saveSocials()">UPDATE SOCIALS</button>
+                <p id="status-socials" class="status"></p>
+            </div>
+
+            <div class="admin-panel">
+                <h2>3. ADD CUSTOM BUTTON</h2>
+                <label>Button Title</label>
+                <input type="text" id="b-title" placeholder="e.g., View My Portfolio">
+                
+                <label>Button URL</label>
+                <input type="text" id="b-url" placeholder="https://...">
+                
+                <button onclick="addButton()">+ ADD BUTTON</button>
+                <button class="danger-btn" onclick="clearButtons()">CLEAR ALL BUTTONS</button>
+                <p id="status-buttons" class="status"></p>
+            </div>
+        </div>
+    </div>
+
+<script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDl-UPkGhycSHKqB-hZyufMLCRmDXlruk0",
+            authDomain: "sheiranfc.firebaseapp.com",
+            databaseURL: "https://sheiranfc-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sheiranfc",
+            storageBucket: "sheiranfc.firebasestorage.app",
+            messagingSenderId: "997291804692",
+            appId: "1:997291804692:web:a6961eeac0f4357fe2ff01"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-dashboard').style.display = 'flex';
+                loadCurrentData(); 
+            } else {
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('main-dashboard').style.display = 'none';
+            }
+        });
+
+        function loadCurrentData() {
+            database.ref('clients/sheira').once('value').then((snapshot) => {
+                const data = snapshot.val();
+                
+                // Load Profile
+                if (data && data.profile) {
+                    document.getElementById('p-name').value = data.profile.name || "";
+                    document.getElementById('p-role').value = data.profile.role || "";
+                    document.getElementById('p-bio').value = data.profile.bio || "";
+                    document.getElementById('p-email').value = data.profile.email || "";
+                    document.getElementById('p-phone').value = data.profile.phone || "";
+                }
+                
+                // Load Socials
+                if (data && data.socials) {
+                    document.getElementById('s-insta').value = data.socials.instagram || "";
+                    document.getElementById('s-linkedin').value = data.socials.linkedin || "";
+                    document.getElementById('s-wa').value = data.socials.whatsapp || "";
+                }
+
+                // Load Buttons List with Delete feature
+                const btnList = document.getElementById('button-list-container');
+                if(!btnList) {
+                    // Create the container if it doesn't exist
+                    const container = document.createElement('div');
+                    container.id = 'button-list-container';
+                    container.style = 'margin-top: 15px; width: 100%;';
+                    document.getElementById('status-buttons').parentNode.appendChild(container);
+                }
+                
+                const targetList = document.getElementById('button-list-container');
+                targetList.innerHTML = ""; 
+                
+                if (data && data.buttons) {
+                    Object.keys(data.buttons).forEach(key => {
+                        const btn = data.buttons[key];
+                        targetList.innerHTML += `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.5); padding:10px; margin-bottom:5px; border:1px solid #38a3a5; border-radius:4px;">
+                                <span style="color:white; font-size:14px;">${btn.title}</span>
+                                <button onclick="deleteSingleButton('${key}')" style="width:auto; padding:5px 15px; background:red; border:none; margin:0;">X</button>
+                            </div>
+                        `;
+                    });
+                }
+            });
+        }
+
+        function deleteSingleButton(key) {
+            database.ref('clients/sheira/buttons/' + key).remove()
+                .then(() => {
+                    showStatus('status-buttons', "REMOVED!");
+                    loadCurrentData(); // Refresh list immediately
+                });
+        }
+
+        function login() {
+            const e = document.getElementById('admin-email').value;
+            const p = document.getElementById('admin-password').value;
+            showStatus('login-status', 'Authenticating...', 'orange');
+            auth.signInWithEmailAndPassword(e, p)
+                .then(() => { document.getElementById('login-status').innerText = ""; })
+                .catch(err => showStatus('login-status', err.message, "red"));
+        }
+
+        function logout() { auth.signOut(); }
+
+        function showStatus(elementId, text, color = "#38a3a5") {
+            const el = document.getElementById(elementId);
+            el.innerText = text; el.style.color = color;
+            setTimeout(() => el.innerText = "", 3000);
+        }
+
+        function saveProfile() {
+            const profileData = {
+                name: document.getElementById('p-name').value,
+                role: document.getElementById('p-role').value,
+                bio: document.getElementById('p-bio').value,
+                email: document.getElementById('p-email').value,
+                phone: document.getElementById('p-phone').value
+            };
+            database.ref('clients/sheira/profile').set(profileData)
+                .then(() => showStatus('status-profile', "PROFILE SAVED!"))
+                .catch(err => showStatus('status-profile', "Error: " + err, "red"));
+        }
+
+        function saveSocials() {
+            const socialsData = {};
+            const insta = document.getElementById('s-insta').value;
+            const link = document.getElementById('s-linkedin').value;
+            const wa = document.getElementById('s-wa').value;
+            if (insta) socialsData.instagram = insta;
+            if (link) socialsData.linkedin = link;
+            if (wa) socialsData.whatsapp = wa;
+            database.ref('clients/sheira/socials').set(socialsData)
+                .then(() => showStatus('status-socials', "SOCIALS SAVED!"))
+                .catch(err => showStatus('status-socials', "Error: " + err, "red"));
+        }
+
+        function addButton() {
+            const title = document.getElementById('b-title').value;
+            let url = document.getElementById('b-url').value.trim();
+            
+            if (!title || !url) return showStatus('status-buttons', "Fill both fields!", "red");
+
+            // --- SMART LINK FORMATTING ---
+            // 1. If they type an email address
+            if (url.includes('@') && !url.startsWith('mailto:') && !url.startsWith('http')) {
+                url = 'mailto:' + url;
+            } 
+            // 2. If they type a phone number
+            else if (/^[\d\+\-\s]+$/.test(url) && !url.startsWith('tel:')) {
+                url = 'tel:' + url.replace(/[\s\-]/g, '');
+            }
+            // 3. If they type a normal website without https://
+            else if (!url.startsWith('http') && !url.startsWith('mailto:') && !url.startsWith('tel:')) {
+                url = 'https://' + url;
+            }
+            // -----------------------------
+
+            database.ref('clients/sheira/buttons').push({ title: title, url: url })
+                .then(() => {
+                    showStatus('status-buttons', "BUTTON ADDED!");
+                    document.getElementById('b-title').value = "";
+                    document.getElementById('b-url').value = "";
+                    loadCurrentData(); // Refresh list immediately
+                })
+                .catch(err => showStatus('status-buttons', "Error: " + err, "red"));
+        }
+
+        function clearButtons() {
+            if(confirm("Are you sure you want to delete all custom buttons?")) {
+                database.ref('clients/sheira/buttons').remove()
+                    .then(() => {
+                        showStatus('status-buttons', "ALL BUTTONS CLEARED!", "orange");
+                        loadCurrentData();
+                    })
+                    .catch(err => showStatus('status-buttons', "Error: " + err, "red"));
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RC Digital Profile</title>
+    <link rel="icon" type="image/png" href="./logo.png">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <style>
+
+        .a-enter-vr, .a-enter-ar { display: none !important; }
+
+        /* Base Cyberpunk Theme */
+        body { margin: 0; padding: 0; overflow: hidden; background: black; font-family: 'Rajdhani', sans-serif; }
+
+        /* Solid UI Overlay */
+        #ui-layer {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(165deg, #0a1128 0%, #1c3d72 40%, #38a3a5 100%);
+            z-index: 10; display: flex; flex-direction: column; align-items: center; overflow-y: auto;
+        }
+
+        #ui-layer::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)"/%3E%3C/svg%3E');
+            opacity: 0.15; mix-blend-mode: overlay; pointer-events: none; z-index: 0;
+        }
+
+        .inner-container {
+            width: 100%; max-width: 400px; margin: 0 auto; padding: 40px 20px; box-sizing: border-box; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 1;
+        }
+
+        .top-badge {
+            position: absolute; top: 30px; right: 20px;
+            font-family: 'Orbitron', sans-serif; font-size: 20px; color: white; font-weight: 900;
+            border: 2px solid white; padding: 2px 8px; border-radius: 4px; border-top-left-radius: 12px;
+        }
+
+        /* Typography */
+        .profile-block { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; margin-top: 50px; }
+        .role-text { color: white; font-size: 18px; letter-spacing: 1px; margin: 0 0 5px 0; text-transform: uppercase; text-align: center; width: 100%;}
+        .name-text { 
+            font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 900; color: white; text-transform: uppercase; margin: 0 0 10px 0; 
+            text-shadow: 0px 0px 10px rgba(255,255,255,0.3); text-align: center; width: 100%;
+        }
+        
+        /* Auto-Hiding Bio Section */
+        #bio-text {
+            display: none; color: #a8dadc; font-size: 15px; line-height: 1.4; margin: 0 0 15px 0; 
+            text-align: center; width: 90%; font-style: italic; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;
+        }
+
+        .details-text { color: white; font-size: 16px; line-height: 1.6; margin: 0; letter-spacing: 0.5px; text-align: center; width: 100%; display: none; }
+        
+        /* Social Icons Row */
+        #social-row { display: none; flex-direction: row; gap: 20px; margin: 20px 0; justify-content: center; width: 100%; }
+        .social-icon { color: white; font-size: 24px; transition: 0.3s; text-decoration: none; }
+        .social-icon:hover { color: #38a3a5; transform: scale(1.2); }
+
+        .tech-divider { width: 100%; max-width: 250px; height: 30px; margin: 15px auto 25px auto; fill: none; stroke: rgba(255,255,255,0.7); stroke-width: 2; display: block; }
+        #links-container { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+
+        /* Buttons */
+        .link-button {
+            display: block; width: 100%; padding: 16px 0; background: #0a1128; border: none; border-left: 5px solid #38a3a5;
+            color: white; text-align: center; text-decoration: none; text-transform: uppercase; 
+            font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 14px; letter-spacing: 1px;
+            clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 0 100%); transition: 0.3s; cursor: pointer; position: relative; z-index: 2;
+        }
+        .link-button:hover { background: #38a3a5; color: #0a1128; }
+        
+        .ar-button { background: rgba(255,255,255,0.1); border-left: 5px solid white; clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px); }
+        .ar-button:hover { background: white; color: #0a1128; }
+        .vcf-button { background: #38a3a5; color: #0a1128; border-left: 5px solid white; }
+        .vcf-button:hover { background: white; color: black; }
+
+        #close-ar {
+            display: none; position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 12px 24px; background: red; color: white; border: none; 
+            font-family: 'Orbitron', sans-serif; font-weight: bold; cursor: pointer; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        #debug-status { margin-top: 30px; font-size: 12px; color: #38a3a5; font-family: monospace; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <button id="close-ar">X ABORT</button>
+
+    <div id="ui-layer">
+        <div class="inner-container">
+            <div class="top-badge">01</div>
+            
+            <div class="profile-block">
+                <p class="role-text" id="role-display">[LOADING]</p>
+                <h1 class="name-text" id="name-display">SYSTEM_INIT</h1>
+                <p id="bio-text"></p> 
+                <p class="details-text" id="details-display"></p>
+                <div id="social-row"></div>
+            </div>
+
+            <svg class="tech-divider" viewBox="0 0 300 40" preserveAspectRatio="none"><path d="M0,20 L240,20 L260,0 L280,0 L250,30 L280,30" /></svg>
+
+            <div id="links-container">
+                <button id="save-contact-btn" class="link-button vcf-button">[ SAVE TO CONTACTS ]</button>
+                <button id="trigger-ar" class="link-button ar-button">SCAN CARD FOR AR</button>
+            </div>
+
+            <p id="debug-status">Status: Connecting...</p>
+        </div>
+    </div>
+
+    <a-scene mindar-image="imageTargetSrc: https://nfc.rebeliviouscreative.com/targets.mind; autoStart: false; uiScanning: no;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        <a-entity mindar-image-target="targetIndex: 0">
+            <a-box position="0 0 0" scale="0.8 0.8 0.1" color="red" opacity="0.8"></a-box>
+        </a-entity>
+    </a-scene>
+
+    <script>
+        // --- 1. FIREBASE SETUP ---
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+        apiKey: "AIzaSyDl-UPkGhycSHKqB-hZyufMLCRmDXlruk0",
+        authDomain: "sheiranfc.firebaseapp.com",
+        databaseURL: "https://sheiranfc-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "sheiranfc",
+        storageBucket: "sheiranfc.firebasestorage.app",
+        messagingSenderId: "997291804692",
+        appId: "1:997291804692:web:a6961eeac0f4357fe2ff01",
+        measurementId: "G-YS98VYESLD"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const debugText = document.getElementById('debug-status');
+
+        // --- 2. ICON MAPPING LOGIC ---
+        function getSocialIcon(url) {
+            const u = url.toLowerCase();
+            if (u.includes("instagram")) return "fa-brands fa-instagram";
+            if (u.includes("linkedin")) return "fa-brands fa-linkedin";
+            if (u.includes("facebook")) return "fa-brands fa-facebook";
+            if (u.includes("tiktok")) return "fa-brands fa-tiktok";
+            if (u.includes("wa.me") || u.includes("whatsapp")) return "fa-brands fa-whatsapp";
+            return "fa-solid fa-share-nodes"; 
+        }
+
+        // --- 3. THE MASTER DATA LOAD ---
+        try {
+            const clientRef = database.ref('clients/sheira');
+
+            clientRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    debugText.innerText = "Status: Connected, but database is empty.";
+                    return;
+                }
+
+                // Profile & Bio
+                document.getElementById('name-display').innerText = data.profile?.name || "UNKNOWN";
+                document.getElementById('role-display').innerText = data.profile?.role || "USER";
+                
+                const bioBox = document.getElementById('bio-text');
+                if (data.profile?.bio && data.profile.bio.trim() !== "") {
+                    bioBox.innerText = data.profile.bio;
+                    bioBox.style.display = "block";
+                } else {
+                    bioBox.style.display = "none";
+                }
+
+                // Contact Details
+                const detailsBox = document.getElementById('details-display');
+                let detailsHTML = "";
+                if (data.profile?.email) detailsHTML += `${data.profile.email}<br>`;
+                if (data.profile?.phone) detailsHTML += `${data.profile.phone}`;
+                if (detailsHTML !== "") {
+                    detailsBox.innerHTML = detailsHTML;
+                    detailsBox.style.display = "block";
+                } else {
+                    detailsBox.style.display = "none";
+                }
+
+                // Dynamic Social Icons
+                const socialRow = document.getElementById('social-row');
+                socialRow.innerHTML = ""; 
+                if (data.socials) {
+                    socialRow.style.display = "flex";
+                    Object.values(data.socials).forEach(url => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.className = "social-icon";
+                        a.target = "_blank";
+                        a.innerHTML = `<i class="${getSocialIcon(url)}"></i>`;
+                        socialRow.appendChild(a);
+                    });
+                } else {
+                    socialRow.style.display = "none";
+                }
+
+                // Dynamic Buttons
+                const linksContainer = document.getElementById('links-container');
+                document.querySelectorAll('.dynamic-link').forEach(el => el.remove());
+
+                 if (data.buttons) {
+                    Object.values(data.buttons).forEach(link => {
+                        const btn = document.createElement('a');
+                        btn.href = link.url;
+                        btn.className = "link-button dynamic-link";
+                        btn.target = "_blank";
+                        btn.innerText = link.title;
+                        linksContainer.appendChild(btn);
+                    });
+                }
+
+                // Save Contact Data in Memory
+                window.currentContact = data.profile;
+                debugText.innerText = "Status: System Online.";
+                debugText.style.color = "#38a3a5";
+
+            }, (error) => {
+                debugText.innerText = "Status: Connection Blocked (Check Rules)";
+                debugText.style.color = "red";
+            });
+        } catch (err) {
+            debugText.innerText = "Status: Critical Script Error.";
+            debugText.style.color = "red";
+        }
+
+        // --- 4. VCF GENERATOR ---
+        document.getElementById('save-contact-btn').addEventListener('click', () => {
+            const c = window.currentContact;
+            if(!c) return;
+            const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${c.name || ""}\nORG:RC Client\nTITLE:${c.role || ""}\nTEL;TYPE=CELL:${c.phone || ""}\nEMAIL:${c.email || ""}\nEND:VCARD`;
+            const blob = new Blob([vcard], { type: 'text/vcard' });
+            const url = window.URL.createObjectURL(blob);
+            const newLink = document.createElement('a');
+            newLink.style.display = 'none';
+            newLink.href = url;
+            newLink.download = `${(c.name || "Contact").replace(/\s+/g, '_')}.vcf`;
+            document.body.appendChild(newLink);
+            newLink.click();
+            window.URL.revokeObjectURL(url);
+        });
+
+        // --- 5. AR INTERACTIONS ---
+        const arTriggerBtn = document.getElementById('trigger-ar');
+        const closeArBtn = document.getElementById('close-ar');
+        const uiLayer = document.getElementById('ui-layer');
+        const sceneEl = document.querySelector('a-scene');
+
+        arTriggerBtn.addEventListener('click', () => {
+            uiLayer.style.display = 'none';      
+            closeArBtn.style.display = 'block';  
+            sceneEl.systems["mindar-image-system"].start(); 
+        });
+
+        closeArBtn.addEventListener('click', () => {
+            sceneEl.systems["mindar-image-system"].stop();  
+            closeArBtn.style.display = 'none';   
+            uiLayer.style.display = 'flex';      
+        });
+    </script>
+</body>
+</html>
