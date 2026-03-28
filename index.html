@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -148,11 +149,21 @@
         </div>
     </div>
 
-    <a-scene mindar-image="imageTargetSrc: https://nfc.rebeliviouscreative.com/targets.mind; autoStart: false; uiScanning: no;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+<a-scene mindar-image="imageTargetSrc: https://nfc.rebeliviouscreative.com/targets.mind; autoStart: false; uiScanning: no;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+        
+        <a-assets>
+            <a-asset-item id="customModel" src="https://nfc.rebeliviouscreative.com/model.glb"></a-asset-item>
+        </a-assets>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+        <a-light type="ambient" color="#FFFFFF" intensity="1.5"></a-light>
+        <a-light type="directional" color="#FFFFFF" intensity="2" position="0 2 1"></a-light>
+
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-box position="0 0 0" scale="0.8 0.8 0.1" color="red" opacity="0.8"></a-box>
+            <a-gltf-model src="#customModel" position="0 0 0" scale="0.5 0.5 0.5" rotation="0 0 0" animation-mixer></a-gltf-model>
         </a-entity>
+        
     </a-scene>
 
     <script>
